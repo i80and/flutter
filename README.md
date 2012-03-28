@@ -11,20 +11,22 @@ runtime.  This is flutter.py.
 
 Examples
 --------
-    from flutter import *
+```python
+from flutter import *
 
-    # x must be either an int or a float, f must be a function taking either
-    # an int or a float and returning an int, and a tuple (int, str) must be
-    # returned.
-    @check(Union(int, float), Function(Union(int, float), int), Tuple(int, str))
-    def foo(x, f):
-        return (f(x), str(x))
-        
-    # Works
-    foo(3, int)
+# x must be either an int or a float, f must be a function taking either
+# an int or a float and returning an int, and a tuple (int, str) must be
+# returned.
+@check(Union(int, float), Function(Union(int, float), int), Tuple(int, str))
+def foo(x, f):
+    return (f(x), str(x))
     
-    # Throws a TypeError
-    foo(3, lambda x: str(x))
+# Works
+foo(3, int)
+
+# Throws a TypeError
+foo(3, lambda x: str(x))
+```
 
 Documentation
 -------------
