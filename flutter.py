@@ -4,7 +4,7 @@ import abc
 debug = True
 
 
-class TypeSpecifier(metaclass=abc.ABCMeta):
+class TypeContainer(metaclass=abc.ABCMeta):
     """Base-class for special type containers."""
     @abc.abstractmethod
     def validate_type(self, x) -> bool:
@@ -20,7 +20,7 @@ class TypeSpecifier(metaclass=abc.ABCMeta):
 def has_members(a, klass) -> bool:
     """Returns whether or not a contains all of klass's properties."""
     # Type containers have special validators
-    if isinstance(klass, TypeSpecifier):
+    if isinstance(klass, TypeContainer):
         return klass.validate_type(a)
 
     a_props = set(dir(a))
@@ -28,7 +28,7 @@ def has_members(a, klass) -> bool:
     return a_props.issuperset(klass_props)
 
 
-class Union(TypeSpecifier):
+class Union(TypeContainer):
     """Type container requiring that a value be one among a set of types."""
     def __init__(self, *args):
         self.possible_types = set(args)
@@ -41,7 +41,7 @@ class Union(TypeSpecifier):
         return False
 
 
-class UnboundedUniform(TypeSpecifier):
+class TypedList(TypeContainer):
     """Type container requiring that each element in a value be of a certain
        type."""
     def __init__(self, arg):
@@ -55,7 +55,7 @@ class UnboundedUniform(TypeSpecifier):
         return True
 
 
-class Tuple(TypeSpecifier):
+class Tuple(TypeContainer):
     """Type container requiring that a value have N elements, each of a
        predetermined type."""
     def __init__(self, *args):
@@ -89,7 +89,7 @@ def create_function_checker(prototype, f):
             if not has_members(pair[1], pair[0]):
                 raise TypeError(pair[1])
 
-            if isinstance(pair[0], TypeSpecifier):
+            if isinstance(pair[0], TypeContainer):
                 wrapped_args.append(pair[0].wrap_type(pair[1]))
             else:
                 wrapped_args.append(pair[1])
@@ -98,7 +98,7 @@ def create_function_checker(prototype, f):
         val = f(*wrapped_args, **kwargs)
         if not has_members(val, prototype[-1]):
             raise TypeError(val)
-        if isinstance(prototype[-1], TypeSpecifier):
+        if isinstance(prototype[-1], TypeContainer):
             val = prototype[-1].wrap_type(val)
 
         return val
@@ -106,7 +106,7 @@ def create_function_checker(prototype, f):
     return check_function
 
 
-class Function(TypeSpecifier):
+class Function(TypeContainer):
     """A type container representing a function."""
     def __init__(self, *args):
         self.prototype = args

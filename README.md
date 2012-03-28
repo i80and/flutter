@@ -30,17 +30,18 @@ In general, a value `x` has type `t` if and only if it either
 by `x`.  In a check() statement, values `0..(n-1)` are arguments, and value
 `n` is the return.
 
-  * `flutter.TypeSpecifier` Abstract base class indicating a type container.
+  * `flutter.TypeContainer` Abstract base class indicating a type container.
   * `flutter.check(*args)` Function decorator, taking a variable number of types or type specifiers.
   * `flutter.Union(*args)` Value x must be one of the types in args.
   * `flutter.Tuple(*args)` Container x must have the same number and types of elements as args.
-  * `flutter.UnboundedUniform(arg)` Container x must have only elements of type arg.
+  * `flutter.TypedList(arg)` Container x must have only elements of type arg.
   * `flutter.Function(*args)` Value x must be a callable taking arguments of types args[0:-1], returning type args[-1].
 
 TODO
 ----
   * Tests
   * Better warning messages
+  * Support keyword arguments
   * Support function annotations (PEP-3107)
   * Variable assertions
   * Informal static analysis
