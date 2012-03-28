@@ -83,6 +83,9 @@ def create_function_checker(prototype, f):
         if not has_members(val, prototype[-1]):
             raise TypeError(val)
 
+        if isinstance(prototype[-1], TypeSpecifier):
+            val = prototype[-1].wrap_type(val)
+
         return val
 
     return check_function
