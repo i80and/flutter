@@ -33,12 +33,12 @@ class Union(TypeSpecifier):
 
 
 class UnboundedUniform(TypeSpecifier):
-    def __init__(self, *args):
-        self.uniform = args
+    def __init__(self, arg):
+        self.type = arg
 
     def validate_type(self, x):
-        for pair in zip(x, self.uniform):
-            if not has_members(pair[0], pair[1]):
+        for element in x:
+            if not has_members(x, self.type):
                 return False
 
         return True
@@ -47,13 +47,17 @@ class UnboundedUniform(TypeSpecifier):
 class Tuple(TypeSpecifier):
     def __init__(self, *args):
         self.length = len(args)
-        self.uniform = UnboundedUniform(*args)
+        self.types = args
 
     def validate_type(self, x):
         if len(x) != self.length:
             return False
 
-        return self.uniform.validate_type(x)
+        for pair in zip(x, self.types):
+            if not has_members(pair[0], pair[1]):
+                return False
+
+        return True
 
 
 class Function(TypeSpecifier):
