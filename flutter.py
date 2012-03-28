@@ -9,6 +9,9 @@ class TypeSpecifier(metaclass=abc.ABCMeta):
     def validate_type(self, x) -> bool:
         pass
 
+    def wrap_type(self, x):
+        return x
+
 
 def has_members(a, klass) -> bool:
     """Returns whether or not a contains all of klass's properties."""
@@ -60,12 +63,45 @@ class Tuple(TypeSpecifier):
         return True
 
 
+def create_function_checker(prototype, f):
+    def check_function(*args, **kwargs):
+        if len(args) != (len(prototype) - 1):
+            raise TypeError('{0}() has bad argument arity'.format(f.__name__))
+
+        wrapped_args = []
+        for pair in zip(prototype, args):
+            if not has_members(pair[1], pair[0]):
+                raise TypeError(pair[1])
+
+            if isinstance(pair[0], TypeSpecifier):
+                wrapped_args.append(pair[0].wrap_type(pair[1]))
+            else:
+                wrapped_args.append(pair[1])
+
+        val = f(*wrapped_args, **kwargs)
+
+        if not has_members(val, prototype[-1]):
+            raise TypeError(val)
+
+        return val
+
+    return check_function
+
+
 class Function(TypeSpecifier):
     def __init__(self, *args):
-        self.function = args
+        self.prototype = args
 
     def validate_type(self, x):
+        if not callable(x):
+            return False
+
         return True
+
+    def wrap_type(self, f):
+        wrapper = create_function_checker(self.prototype, f)
+        wrapper.__name__ = '{0} (flutter wrapped)'.format(f.__name__)
+        return wrapper
 
 
 def check(*arg_types):
@@ -73,21 +109,5 @@ def check(*arg_types):
         if not debug:
             return f
 
-        def checker(*args, **kwargs):
-            if len(args) != (len(arg_types) - 1):
-                raise TypeError('{0}() has bad argument arity'.format(f.__name__))
-
-            for pair in zip(arg_types, args):
-                if not has_members(pair[1], pair[0]):
-                    raise TypeError(pair[1])
-
-            val = f(*args, **kwargs)
-
-            if not has_members(val, arg_types[-1]):
-                raise TypeError(val)
-
-            return val
-
-        return checker
-
+        return create_function_checker(arg_types, f)
     return inner
