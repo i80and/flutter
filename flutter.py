@@ -55,7 +55,7 @@ class TypedIterable(TypeSpecifier):
 
     def validate_type(self, x):
         for element in x:
-            if not has_members(x, self.type):
+            if not has_members(element, self.type):
                 return False
 
         return True
