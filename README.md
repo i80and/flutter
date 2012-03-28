@@ -30,6 +30,7 @@ In general, a value `x` has type `t` if and only if either
 by `x`.  In a check() statement, values `0..(n-1)` are arguments, and value
 `n` is the return.
 
+  * `flutter.debug` Boolean defaulting to True.  Set to False to disable flutter.check() for performance gains.
   * `flutter.TypeContainer` Abstract base class indicating a type container.
   * `flutter.check(*args)` Function decorator, taking a variable number of types or type specifiers.
   * `flutter.Union(*args)` Value x must be one of the types in args.
