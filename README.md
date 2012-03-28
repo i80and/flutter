@@ -1,18 +1,21 @@
 flutter.py
 ==========
-Python, as a dynamically-typed language, has a philosophy of duck typing: if an
-object has the requisite properties, then it is correct.  This usually works
-acceptably, but in my experience can on occasion propagate errors through a
-system.
+Python, as a dynamically-typed language, has a philosophy of duck typing: if
+an object has the requisite properties, then that object is of the correct
+type.  This usually works just fine, but there are some circumstances where
+type mistakes can silently propogate throughout a system.
 
-While long-term I believe that optional typing can be used to improve static
-analysis, for now I'll settle for function prototype assertions at runtime.
-This is flutter.py.
+While I believe that long-term optional typing can be used to facilitate
+static analysis, but for now I'll settle for function prototype assertions at
+runtime.  This is flutter.py.
 
 Examples
 --------
     from flutter import *
 
+    # x must be either an int or a float, f must be a function taking either
+    # an int or a float and returning an int, and a tuple (int, str) must be
+    # returned.
     @check(Union(int, float), Function(Union(int, float), int), Tuple(int, str))
     def foo(x, f):
         return (f(x), str(x))
@@ -20,13 +23,13 @@ Examples
     # Works
     foo(3, int)
     
-    # Fails
+    # Throws a TypeError
     foo(3, lambda x: str(x))
 
 Documentation
 -------------
 In general, a value `x` has type `t` if and only if either
-`set(dir(x)).issuperset(set(dir(t)))` or if `t` is a type specifier satisfied
+`set(dir(x)).issuperset(set(dir(t)))` or if `t` is a type specifier container
 by `x`.  In a check() statement, values `0..(n-1)` are arguments, and value
 `n` is the return.
 
