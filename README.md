@@ -25,7 +25,7 @@ Examples
 
 Documentation
 -------------
-In general, a value `x` has type `t` if and only if it either
+In general, a value `x` has type `t` if and only if either
 `set(dir(x)).issuperset(set(dir(t)))` or if `t` is a type specifier satisfied
 by `x`.  In a check() statement, values `0..(n-1)` are arguments, and value
 `n` is the return.
