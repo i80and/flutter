@@ -5,8 +5,8 @@ an object has the requisite properties, then that object is of the correct
 type.  This usually works just fine, but there are some circumstances where
 type mistakes can silently propagate throughout a system.
 
-While I believe that long-term optional typing can be used to facilitate
-static analysis, but for now I'll settle for function prototype assertions at
+While I believe that in the long term optional typing can be used to facilitate
+static analysis, for now I'll settle for function prototype assertions at
 runtime.  This is flutter.py.
 
 Examples
@@ -36,9 +36,9 @@ by `x`.  In a check() statement, values `0..(n-1)` are arguments, and value
 `n` is the return.
 
   * `flutter.debug` Boolean defaulting to True.  Set to False to disable flutter.check() for performance gains.
-  * `flutter.TypeSpecifier` Abstract base class indicating a type specifier.
   * `flutter.check(*args)` Function decorator, taking a variable number of types or type specifiers.
   * `flutter.methodcheck(*args)` Like check(), but works with class and instance methods.
+  * `flutter.TypeSpecifier` Abstract base class indicating a type specifier.
   * `flutter.Empty()` A type specifier that accepts all types.
   * `flutter.Union(*args)` Value x must be one of the types in args.
   * `flutter.Tuple(*args)` Container x must have the same number and types of elements as args.
@@ -53,4 +53,4 @@ TODO
   * Support keyword arguments
   * Support function annotations (PEP-3107)
   * Variable assertions
-  * Informal static analysis
+  * Informal static type analysis

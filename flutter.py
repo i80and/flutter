@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import abc
 
 debug = True
@@ -18,7 +18,7 @@ class TypeSpecifier(metaclass=abc.ABCMeta):
 
 
 def has_members(a, klass) -> bool:
-    """Returns whether or not a contains all of klass's properties."""
+    """Return whether or not a contains all of klass's properties."""
     # Type containers have special validators
     if isinstance(klass, TypeSpecifier):
         return klass.validate_type(a)
