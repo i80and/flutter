@@ -43,5 +43,43 @@ class FlutterTests(unittest.TestCase):
             doerror = True
             inner(3, int)
 
+    def test_iterable(self):
+        """Test typed iterables."""
+        @flutter.check(flutter.TypedIterable(int), int)
+        def inner(x):
+            return sum(x)
+
+        inner([1, 2, 3])
+        with self.assertRaises(TypeError):
+            inner([1, 2, 'foo'])
+
+    def test_container(self):
+        """Test typed container."""
+        # Note---this is bad practice.  Typically one should not bind a
+        # function to a particular concrete type.
+        @flutter.check(flutter.TypedContainer(list, int), int)
+        def inner(x):
+            return sum(x)
+
+        inner([1, 2, 3])
+        with self.assertRaises(TypeError):
+            inner([1, 2, 'foo'])
+        with self.assertRaises(TypeError):
+            inner((1, 2, 3,))
+
+    def test_tuple(self):
+        """Test tuple types (n-element iterables of exact types)."""
+        @flutter.check(flutter.Tuple(int, int, float), flutter.Empty())
+        def inner(x):
+            pass
+
+        inner((1, 2, 3.5))
+        inner([1, 2, 3.5])
+
+        with self.assertRaises(TypeError):
+            inner((1, 2))
+        with self.assertRaises(TypeError):
+            inner(['foo', 2, 3.5])
+
 if __name__ == '__main__':
     unittest.main()
