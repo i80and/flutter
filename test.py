@@ -81,5 +81,39 @@ class FlutterTests(unittest.TestCase):
         with self.assertRaises(TypeError):
             inner(['foo', 2, 3.5])
 
+    def test_aliases(self):
+        """Test the simple case of pre-instantiating type specifiers."""
+        Number = flutter.Union(int, float)
+        @flutter.check(Number, int)
+        def inner(x):
+            return int(x)
+
+        inner(4)
+        inner(3.4)
+        with self.assertRaises(TypeError):
+            inner('test')
+
+    def test_full_aliases(self):
+        """Test pre-instantiating an entire prototype."""
+        doerror = False
+
+        FunctionSpecifier = [int, int, flutter.Function(int)]
+        @flutter.check(FunctionSpecifier)
+        def inner(x, y):
+            if doerror:
+                return 0
+
+            def adder():
+                return x + y
+            return adder
+        
+        inner(1, 2)
+        with self.assertRaises(TypeError):
+            inner(1, 2.0)
+
+        doerror = True
+        with self.assertRaises(TypeError):
+            inner(1, 2)
+
 if __name__ == '__main__':
     unittest.main()

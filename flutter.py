@@ -149,7 +149,13 @@ def check(*arg_types):
         if not debug:
             return f
 
-        return create_function_checker(arg_types, f)
+        specifiers = arg_types
+        try:
+            specifiers = list(arg_types[0])
+        except TypeError:
+            pass
+
+        return create_function_checker(specifiers, f)
     return inner
 
 
