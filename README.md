@@ -5,9 +5,14 @@ an object has the requisite properties, then that object is of the correct
 type.  This usually works just fine, but there are some circumstances where
 type mistakes can silently propagate throughout a system.
 
-While I believe that in the long term optional typing can be used to facilitate
-static analysis, for now I'll settle for function prototype assertions at
-runtime.  This is flutter.py.
+Flutter seeks to detect this early, while it's still easy to debug and before
+any corruption can occur.  It provides a modestly expressive type system
+capable of wrapping higher-order functions (although those used to ML-style
+typesystems may find themselves disappointed).  However, it still remains true
+to Python's duck typed style, testing class attribute membership or evaluating
+custom verification methods rather than using nominal types.
+
+It's not a static type system, but flutter.py might just make your life easier.
 
 Examples
 --------
@@ -36,7 +41,8 @@ by `x`.  In a check() statement, values `0..(n-1)` are arguments, and value
 `n` is the return.
 
   * `flutter.debug` Boolean defaulting to True.  Set to False to disable flutter.check() for performance gains.
-  * `flutter.check(*args)` Function decorator, taking a variable number of types or type specifiers.
+  * `flutter.check(*args)` Function decorator, taking either a variable number of types or type specifiers, or a list 
+  of the same.
   * `flutter.methodcheck(*args)` Like check(), but works with class and instance methods.
   * `flutter.TypeSpecifier` Abstract base class indicating a type specifier.
   * `flutter.Empty()` A type specifier that accepts all types.
@@ -48,7 +54,6 @@ by `x`.  In a check() statement, values `0..(n-1)` are arguments, and value
 
 TODO
 ----
-  * Tests
   * Better warning messages
   * Support keyword arguments
   * Support function annotations (PEP-3107)
