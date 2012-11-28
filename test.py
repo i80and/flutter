@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+# Copyright Andrew Aldridge <i80and@gmail.com>
+# See LICENSE.ISC in the project root for details.
+"""Tests for flutter.py."""
+
 import unittest
 import flutter
 
