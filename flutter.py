@@ -32,7 +32,7 @@ def has_members(a, klass) -> bool:
     return a_props.issuperset(klass_props)
 
 
-class Empty(TypeSpecifier):
+class Any(TypeSpecifier):
     """Type container accepting any value."""
     def validate_type(self, x):
         return True
@@ -166,4 +166,4 @@ def check(*arg_types):
 def methodcheck(*arg_types):
     """Wrapper around check() that ignores the first argument.  Useful for
        checking instance and class methods."""
-    return check(Empty(), *arg_types)
+    return check(Any(), *arg_types)

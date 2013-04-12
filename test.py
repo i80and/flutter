@@ -8,10 +8,10 @@ import flutter
 
 
 class FlutterTests(unittest.TestCase):
-    def test_empty(self):
+    def test_any(self):
         """A simple test involving an unconstrained argument."""
         doerror = False
-        @flutter.check(flutter.Empty(), int)
+        @flutter.check(flutter.Any(), int)
         def inner(x):
             if doerror:
                 return 'a string'
@@ -73,7 +73,7 @@ class FlutterTests(unittest.TestCase):
 
     def test_tuple(self):
         """Test tuple types (n-element iterables of exact types)."""
-        @flutter.check(flutter.Tuple(int, int, float), flutter.Empty())
+        @flutter.check(flutter.Tuple(int, int, float), flutter.Any())
         def inner(x):
             pass
 
@@ -118,6 +118,17 @@ class FlutterTests(unittest.TestCase):
         doerror = True
         with self.assertRaises(TypeError):
             inner(1, 2)
+
+    def test_empty(self):
+        """Test a function with an empty signature."""
+        @flutter.check(None)
+        def inner():
+            pass
+
+        inner()
+
+        with self.assertRaises(TypeError):
+            inner(2)
 
 if __name__ == '__main__':
     unittest.main()

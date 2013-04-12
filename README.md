@@ -45,7 +45,7 @@ by `x`.  In a check() statement, values `0..(n-1)` are arguments, and value
   of the same.
   * `flutter.methodcheck(*args)` Like check(), but works with class and instance methods.
   * `flutter.TypeSpecifier` Abstract base class indicating a type specifier.
-  * `flutter.Empty()` A type specifier that accepts all types.
+  * `flutter.Any()` A type specifier that accepts all types.
   * `flutter.Union(*args)` Value x must be one of the types in args.
   * `flutter.Tuple(*args)` Container x must have the same number and types of elements as args.
   * `flutter.TypedIterable(arg)` Container x must have only elements of type arg.
