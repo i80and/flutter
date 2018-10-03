@@ -1,169 +1,110 @@
-#!/usr/bin/env python3
-# Copyright Andrew Aldridge <i80and@gmail.com>
-# See LICENSE.ISC in the project root for details.
-"""Runtime type checking for Python."""
+import collections.abc
+from typing import Dict, Type, TypeVar, Union
+from typing_extensions import Protocol, runtime
 
-import abc
-
-debug = True
+CACHED_TYPES: Dict[type, Dict[str, type]] = {}
 
 
-class TypeSpecifier(metaclass=abc.ABCMeta):
-    """Base-class for special type containers."""
-    @abc.abstractmethod
-    def validate_type(self, x) -> bool:
-        """Verify that x satisfies this type specifier."""
-        pass
-
-    def wrap_type(self, x):
-        """Some types (like functions) cannot have their type resolved just
-           yet, and must be safety-wrapped for later analysis."""
-        return x
+class HasAnnotations(Protocol):
+    def __init__(self, **kwargs: object) -> None: ...
+    __annotations__: Dict[str, type]
 
 
-def has_members(a, klass) -> bool:
-    """Return whether or not a contains all of klass's properties."""
-    # Type containers have special validators
-    if isinstance(klass, TypeSpecifier):
-        return klass.validate_type(a)
-
-    a_props = set(dir(a))
-    klass_props = set(dir(klass))
-    return a_props.issuperset(klass_props)
+@runtime
+class HasOrigin(Protocol):
+    __origin__: type
 
 
-class Any(TypeSpecifier):
-    """Type container accepting any value."""
-    def validate_type(self, x):
-        return True
+T = TypeVar('T', bound=HasAnnotations)
 
 
-class Union(TypeSpecifier):
-    """Type container requiring that a value be one among a set of types."""
-    def __init__(self, *args):
-        self.possible_types = set(args)
+def checked(klass: Type[T]) -> Type[T]:
+    """Marks a dataclass as being deserializable."""
+    annotations = {}
+    for base in klass.__bases__:
+        if base is object:
+            continue
 
-    def validate_type(self, x):
-        for possible_type in self.possible_types:
-            if has_members(x, possible_type):
-                return True
+        annotations.update(CACHED_TYPES[base])
 
-        return False
+    annotations.update(klass.__annotations__)
+    CACHED_TYPES[klass] = annotations
 
-
-class TypedIterable(TypeSpecifier):
-    """Type container requiring that each element in a value be of a certain
-       type."""
-    def __init__(self, arg):
-        self.type = arg
-
-    def validate_type(self, x):
-        for element in x:
-            if not has_members(element, self.type):
-                return False
-
-        return True
+    return klass
 
 
-class TypedContainer(TypeSpecifier):
-    """Similar to TypedIterable, but also constrains the type of container in
-       use."""
-    def __init__(self, container_type, element_type):
-        self.container_type = container_type
-        self.element_type = element_type
-
-    def validate_type(self, x):
-        iterable = TypedIterable(self.element_type)
-        return has_members(x, self.container_type) and \
-               has_members(x, iterable)
+class LoadError(TypeError):
+    def __init__(self, message: str, ty: type, bad_data: object) -> None:
+        super().__init__(message)
+        self.expected_type = ty
+        self.bad_data = bad_data
 
 
-class Tuple(TypeSpecifier):
-    """Type container requiring that a value have N elements, each of a
-       predetermined type."""
-    def __init__(self, *args):
-        self.length = len(args)
-        self.types = args
-
-    def validate_type(self, x):
-        if len(x) != self.length:
-            return False
-
-        for pair in zip(x, self.types):
-            if not has_members(pair[0], pair[1]):
-                return False
-
-        return True
+class LoadWrongType(LoadError):
+    def __init__(self, ty: type, bad_data: object) -> None:
+        super().__init__('Incorrect type. Expected "{}"'.format(ty), ty, bad_data)
 
 
-def create_function_checker(prototype, f):
-    """Returns a wrapper for f demanding that f fits the given prototype."""
-    def check_function(*args, **kwargs):
-        """If the arguments are right, call f() with them, and check its
-           return value."""
-        # Check the argument array arity
-        if len(args) != (len(prototype) - 1):
-            raise TypeError('{0}() has bad argument arity'.format(f.__name__))
-
-        # Ensure that the argument array is correct, wrapping functions as
-        # necessary before passing them on to f()
-        wrapped_args = []
-        for pair in zip(prototype, args):
-            if not has_members(pair[1], pair[0]):
-                raise TypeError(pair[1])
-
-            if isinstance(pair[0], TypeSpecifier):
-                wrapped_args.append(pair[0].wrap_type(pair[1]))
-            else:
-                wrapped_args.append(pair[1])
-
-        # Check f()'s return value, and wrap it if necessary before returning
-        val = f(*wrapped_args, **kwargs)
-        if not has_members(val, prototype[-1]):
-            raise TypeError(val)
-        if isinstance(prototype[-1], TypeSpecifier):
-            val = prototype[-1].wrap_type(val)
-
-        return val
-
-    return check_function
+class LoadUnknownField(LoadError):
+    def __init__(self, ty: type, bad_data: object, bad_field: str) -> None:
+        super().__init__('Unknown field "{}"'.format(bad_field), ty, bad_data)
+        self.bad_field = bad_field
 
 
-class Function(TypeSpecifier):
-    """A type container representing a function."""
-    def __init__(self, *args):
-        self.prototype = args
+def check_type(ty: Type[T], data: object) -> T:
+    # Check for a primitive type
+    if ty in (str, int, float, bool, type(None)):
+        if not isinstance(data, ty):
+            raise LoadWrongType(ty, data)
+        return data
 
-    def validate_type(self, x):
-        if not callable(x):
-            return False
+    # Check for an object
+    if isinstance(data, dict) and ty in CACHED_TYPES:
+        annotations = CACHED_TYPES[ty]
+        result: Dict[str, object] = {}
 
-        return True
+        # Assign missing fields None
+        for key in annotations:
+            if key not in data:
+                data[key] = None
 
-    def wrap_type(self, f):
-        """Functions cannot have their type determined upon instantiation."""
-        wrapper = create_function_checker(self.prototype, f)
-        wrapper.__name__ = '{0} (flutter wrapped)'.format(f.__name__)
-        return wrapper
+        # Check field types
+        for key, value in data.items():
+            if key not in annotations:
+                raise LoadUnknownField(ty, data, key)
 
+            expected_type = annotations[key]
+            result[key] = check_type(expected_type, value)
 
-def check(*arg_types):
-    """Simple function decorator that checks the given function."""
-    def inner(f):
-        if not debug:
-            return f
+        return ty(**result)
 
-        specifiers = arg_types
-        try:
-            specifiers = list(arg_types[0])
-        except TypeError:
-            pass
+    # Check for one of the special types defined by PEP-484
+    # These tests should(?) be redundant, but the former is needed for
+    # runtime, and the latter satisfies mypy.
+    if hasattr(ty, '__origin__') and isinstance(ty, HasOrigin):
+        if ty.__origin__ is list:
+            if not isinstance(data, list):
+                raise LoadWrongType(ty, data)
+            arg, = ty.__args__
+            return [check_type(arg, x) for x in data]
+        elif ty.__origin__ is dict:
+            if not isinstance(data, dict):
+                raise LoadWrongType(ty, data)
+            key_type, value_type = ty.__args__
+            return {check_type(key_type, k): check_type(value_type, v) for k, v in data.items()}
+        elif ty.__origin__ is tuple and isinstance(data, collections.abc.Collection):
+            if not len(data) == len(ty.__args__):
+                raise LoadError('Incorrect tuple arity', ty, data)
+            return tuple(check_type(x, tuple_ty) for x, tuple_ty in zip(data, ty.__args__))
+        elif ty.__origin__ is Union:
+            for candidate_ty in ty.__args__:
+                try:
+                    return check_type(candidate_ty, data)
+                except LoadError:
+                    pass
 
-        return create_function_checker(specifiers, f)
-    return inner
+            raise LoadWrongType(ty, data)
 
+        raise LoadError('Unsupported PEP-484 type', ty, data)
 
-def methodcheck(*arg_types):
-    """Wrapper around check() that ignores the first argument.  Useful for
-       checking instance and class methods."""
-    return check(Any(), *arg_types)
+    raise LoadError('Unloadable type', ty, data)
