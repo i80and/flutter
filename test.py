@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 
 from dataclasses import dataclass
-from typing import Callable, List, Dict, Tuple, Type, Optional, Union
-from flutter import checked, check_type, LoadWrongType, LoadWrongArity
+from typing import Any, Callable, List, Dict, Tuple, Type, Optional, Union
+from flutter import (
+    checked, check_type, LoadWrongType, LoadWrongArity, LoadError,
+    LoadUnknownField)
 
 
 @checked
@@ -60,9 +62,13 @@ def test_successful() -> None:
     assert result == reference_node
 
 
-def test_should_be_string() -> None:
+def test_wrong_type() -> None:
     ensure_failure(
         lambda: check_type(Node, {'type': 5, 'file': 'foo', 'line': (1, 2), 'children': []}),
+        LoadWrongType)
+
+    ensure_failure(
+        lambda: check_type(Node, {'type': 'node', 'file': 'foo', 'line': (1, 2), 'children': 5}),
         LoadWrongType)
 
 
@@ -88,10 +94,41 @@ def test_bad_recursive_type() -> None:
         LoadWrongType)
 
 
+def test_too_many_fields() -> None:
+    ensure_failure(
+        lambda: check_type(Node, {
+            'type': 'node', 'file': 'foo', 'line': (1, 2), 'children': [], 'extra': True}),
+        LoadUnknownField)
+
+
+def test_any_types() -> None:
+    @checked
+    @dataclass
+    class Container:
+        obj1: object
+        obj2: Any
+
+    assert check_type(Container, {'obj1': 'foo', 'obj2': 'bar'}) == Container('foo', 'bar')
+    assert check_type(Container, {'obj1': 5, 'obj2': 10}) == Container(5, 10)
+
+
+def test_unknown_origin_type() -> None:
+    @checked
+    @dataclass
+    class Container:
+        obj1: Callable[[int], int]
+
+    ensure_failure(
+        lambda: check_type(Container, {'obj1': 'foo', 'obj2': 'bar'}), LoadError)
+
+
 if __name__ == '__main__':
     test_ensure_failure()
     test_successful()
-    test_should_be_string()
+    test_wrong_type()
     test_wrong_arity()
     test_no_union_variant()
     test_bad_recursive_type()
+    test_too_many_fields()
+    test_any_types()
+    test_unknown_origin_type()
