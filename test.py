@@ -3,8 +3,8 @@
 from dataclasses import dataclass
 from typing import Any, Callable, List, Dict, Tuple, Type, Optional, Union
 from flutter import (
-    checked, check_type, LoadWrongType, LoadWrongArity, LoadError,
-    LoadUnknownField)
+    checked, check_type, english_description_of_type, LoadWrongType,
+    LoadWrongArity, LoadError, LoadUnknownField)
 
 
 @checked
@@ -122,6 +122,24 @@ def test_unknown_origin_type() -> None:
         lambda: check_type(Container, {'obj1': 'foo', 'obj2': 'bar'}), LoadError)
 
 
+def test_type_description() -> None:
+    class Bob:
+        pass
+
+    ty = List[Union[int, List[Dict[str, Union[int, float]]], str, Bob]]
+    desc = ''.join((
+        'list of either an integer, a list of mappings of strings to Union[int, float],',
+        ' a string, or a Bob'))
+    assert english_description_of_type(ty) == desc
+    assert english_description_of_type(Union[int, float]) == 'either an integer or a number'
+    assert english_description_of_type(Union[int]) == 'integer'
+    assert english_description_of_type(Optional[List[bool]]) == 'optional list of booleans'
+    assert english_description_of_type(Tuple[int]) == 'Tuple[int]'
+
+    # Ensure that unknown PEP-484 types don't throw
+    assert english_description_of_type(Callable[[], None]) == 'Callable[[], NoneType]'
+
+
 if __name__ == '__main__':
     test_ensure_failure()
     test_successful()
@@ -132,3 +150,4 @@ if __name__ == '__main__':
     test_too_many_fields()
     test_any_types()
     test_unknown_origin_type()
+    test_type_description()

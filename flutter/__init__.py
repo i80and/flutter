@@ -18,6 +18,73 @@ T = TypeVar('T', bound=HasAnnotations)
 C = TypeVar('C', bound=Constructable)
 
 
+def add_indefinite_article(s: str) -> str:
+    return ('an ' if s[0].lower() in 'aeiouy' else 'a ') + s
+
+
+def _get_typename(ty: type) -> str:
+    return str(ty).replace('typing.', '')
+
+
+def english_description_of_type(ty: type, pluralize: bool = False, level: int = 0) -> str:
+    plural = 's' if pluralize else ''
+
+    if ty is str:
+        return f'string{plural}'
+
+    if ty is int:
+        return f'integer{plural}'
+
+    if ty is float:
+        return f'number{plural}'
+
+    if ty is bool:
+        return f'boolean{plural}'
+
+    if isinstance(ty, type(None)):
+        return f'None{plural}'
+
+    level += 1
+    if level > 4:
+        # Making nested English clauses understandable is hard. Give up.
+        return _get_typename(ty)
+
+    origin = getattr(ty, '__origin__', None)
+    if origin is not None:
+        args = getattr(ty, '__args__')
+        if origin is list:
+            return f'list{plural} of {english_description_of_type(args[0], True, level)}'
+        elif origin is dict:
+            key_type = english_description_of_type(args[0], True, level)
+            value_type = english_description_of_type(args[1], True, level)
+            return f'mapping{plural} of {key_type} to {value_type}'
+        elif origin is tuple:
+            # Tuples are a hard problem... this is okay
+            return _get_typename(ty)
+        elif origin is Union:
+            if len(args) == 2:
+                try:
+                    none_index = args.index(type(None))
+                except ValueError:
+                    pass
+                else:
+                    non_none_arg = args[int(not none_index)]
+                    return f'optional {english_description_of_type(non_none_arg, pluralize, level)}'
+
+            up_to_last = args[:-1]
+            part1 = ', '.join(
+                add_indefinite_article(english_description_of_type(arg, level=level))
+                for arg in up_to_last)
+            part2 = add_indefinite_article(english_description_of_type(args[-1], level=level))
+            comma = ',' if len(up_to_last) > 1 else ''
+            return f'either {part1}{comma} or {part2}'
+
+    try:
+        return ty.__name__
+    except AttributeError:
+        return _get_typename(ty)
+
+
 def checked(klass: Type[T]) -> Type[T]:
     """Marks a dataclass as being deserializable."""
     CACHED_TYPES[klass] = None
@@ -34,7 +101,7 @@ class LoadError(TypeError):
 class LoadWrongType(LoadError):
     def __init__(self, ty: type, bad_data: object) -> None:
         super().__init__(
-            'Incorrect type. Expected "{}"'.format(ty),
+            'Incorrect type. Expected {}'.format(english_description_of_type(ty)),
             ty,
             bad_data)
 
@@ -45,7 +112,7 @@ class LoadWrongArity(LoadWrongType):
 
 class LoadUnknownField(LoadError):
     def __init__(self, ty: type, bad_data: object, bad_field: str) -> None:
-        super().__init__('Unknown field "{}"'.format(bad_field), ty, bad_data)
+        super().__init__('Unexpected field: "{}"'.format(bad_field), ty, bad_data)
         self.bad_field = bad_field
 
 
