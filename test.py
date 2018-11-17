@@ -128,13 +128,16 @@ def test_type_description() -> None:
 
     ty = List[Union[int, List[Dict[str, Union[int, float]]], str, Bob]]
     desc = ''.join((
-        'list of either an integer, a list of mappings of strings to Union[int, float],',
-        ' a string, or a Bob'))
+        'list of either integers, lists of mappings of strings to Union[int, float]\'s,',
+        ' strings, or Bobs'))
     assert english_description_of_type(ty) == desc
     assert english_description_of_type(Union[int, float]) == 'either an integer or a number'
     assert english_description_of_type(Union[int]) == 'integer'
     assert english_description_of_type(Optional[List[bool]]) == 'optional list of booleans'
     assert english_description_of_type(Tuple[int]) == 'Tuple[int]'
+    print(english_description_of_type(Union[int, float, None]))
+    assert english_description_of_type(
+        Union[int, float, None]) == 'either an integer, a number, or nothing'
 
     # Ensure that unknown PEP-484 types don't throw
     assert english_description_of_type(Callable[[], None]) == 'Callable[[], NoneType]'

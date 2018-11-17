@@ -19,6 +19,9 @@ C = TypeVar('C', bound=Constructable)
 
 
 def add_indefinite_article(s: str) -> str:
+    if s == 'nothing':
+        return s
+
     return ('an ' if s[0].lower() in 'aeiouy' else 'a ') + s
 
 
@@ -26,41 +29,49 @@ def _get_typename(ty: type) -> str:
     return str(ty).replace('typing.', '')
 
 
-def english_description_of_type(ty: type, pluralize: bool = False, level: int = 0) -> str:
-    plural = 's' if pluralize else ''
+def _pluralize(s: str) -> str:
+    if s[-1].isalpha():
+        return s + 's'
+
+    return s + '\'s'
+
+
+def english_description_of_type(ty: type, plural: bool = False, level: int = 0) -> str:
+    pluralize = _pluralize if plural else lambda s: s
+    plural_suffix = 's' if plural else ''
 
     if ty is str:
-        return f'string{plural}'
+        return pluralize('string')
 
     if ty is int:
-        return f'integer{plural}'
+        return pluralize('integer')
 
     if ty is float:
-        return f'number{plural}'
+        return pluralize('number')
 
     if ty is bool:
-        return f'boolean{plural}'
+        return pluralize('boolean')
 
-    if isinstance(ty, type(None)):
-        return f'None{plural}'
+    if ty is type(None):  # noqa
+        return 'nothing'
 
     level += 1
     if level > 4:
         # Making nested English clauses understandable is hard. Give up.
-        return _get_typename(ty)
+        return pluralize(_get_typename(ty))
 
     origin = getattr(ty, '__origin__', None)
     if origin is not None:
         args = getattr(ty, '__args__')
         if origin is list:
-            return f'list{plural} of {english_description_of_type(args[0], True, level)}'
+            return f'list{plural_suffix} of {english_description_of_type(args[0], True, level)}'
         elif origin is dict:
             key_type = english_description_of_type(args[0], True, level)
             value_type = english_description_of_type(args[1], True, level)
-            return f'mapping{plural} of {key_type} to {value_type}'
+            return f'mapping{plural_suffix} of {key_type} to {value_type}'
         elif origin is tuple:
             # Tuples are a hard problem... this is okay
-            return _get_typename(ty)
+            return pluralize(_get_typename(ty))
         elif origin is Union:
             if len(args) == 2:
                 try:
@@ -69,20 +80,22 @@ def english_description_of_type(ty: type, pluralize: bool = False, level: int = 
                     pass
                 else:
                     non_none_arg = args[int(not none_index)]
-                    return f'optional {english_description_of_type(non_none_arg, pluralize, level)}'
+                    return f'optional {english_description_of_type(non_none_arg, plural, level)}'
 
             up_to_last = args[:-1]
-            part1 = ', '.join(
-                add_indefinite_article(english_description_of_type(arg, level=level))
-                for arg in up_to_last)
-            part2 = add_indefinite_article(english_description_of_type(args[-1], level=level))
+            part1 = (english_description_of_type(arg, plural, level=level) for arg in up_to_last)
+            part2 = english_description_of_type(args[-1], plural, level=level)
+            if not plural:
+                part1 = (add_indefinite_article(desc) for desc in part1)
+                part2 = add_indefinite_article(part2)
             comma = ',' if len(up_to_last) > 1 else ''
-            return f'either {part1}{comma} or {part2}'
+            joined_part1 = ', '.join(part1)
+            return f'either {joined_part1}{comma} or {part2}'
 
     try:
-        return ty.__name__
+        return pluralize(ty.__name__)
     except AttributeError:
-        return _get_typename(ty)
+        return pluralize(_get_typename(ty))
 
 
 def checked(klass: Type[T]) -> Type[T]:
