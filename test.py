@@ -28,14 +28,18 @@ class Node(Base, SourceInfo):
 
 
 def ensure_failure(func: Callable, exception_class: Type[Exception]) -> None:
+    exception: Optional[Exception] = None
+
     try:
         func()
     except exception_class:
         return
-    except Exception:
-        pass
+    except Exception as err:
+        exception = err
 
-    raise AssertionError('Expected function to raise {}'.format(exception_class.__name__))
+    expected_name = exception_class.__name__
+    actual_name = exception.__class__.__name__
+    raise AssertionError(f'Expected function to raise {expected_name}; got {actual_name}')
 
 
 def test_ensure_failure() -> None:
@@ -130,17 +134,16 @@ def test_type_description() -> None:
     desc = ''.join((
         'list of either integers, lists of mappings of strings to Union[int, float]\'s,',
         ' strings, or Bobs'))
-    assert english_description_of_type(ty) == desc
-    assert english_description_of_type(Union[int, float]) == 'either an integer or a number'
-    assert english_description_of_type(Union[int]) == 'integer'
-    assert english_description_of_type(Optional[List[bool]]) == 'optional list of booleans'
-    assert english_description_of_type(Tuple[int]) == 'Tuple[int]'
-    print(english_description_of_type(Union[int, float, None]))
+    assert english_description_of_type(ty)[0] == desc
+    assert english_description_of_type(Union[int, float])[0] == 'either an integer or a number'
+    assert english_description_of_type(Union[int])[0] == 'integer'
+    assert english_description_of_type(Optional[List[bool]])[0] == 'optional list of booleans'
+    assert english_description_of_type(Tuple[int])[0] == 'Tuple[int]'
     assert english_description_of_type(
-        Union[int, float, None]) == 'either an integer, a number, or nothing'
+        Union[int, float, None])[0] == 'either an integer, a number, or nothing'
 
     # Ensure that unknown PEP-484 types don't throw
-    assert english_description_of_type(Callable[[], None]) == 'Callable[[], NoneType]'
+    assert english_description_of_type(Callable[[], None])[0] == 'Callable[[], NoneType]'
 
 
 if __name__ == '__main__':
