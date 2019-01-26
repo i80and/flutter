@@ -69,6 +69,9 @@ def english_description_of_type(ty: type) -> Tuple[str, Dict[type, str]]:
         if ty is type(None):  # noqa
             return 'nothing'
 
+        if ty is object or ty is Any:
+            return 'anything'
+
         level += 1
         if level > 4:
             # Making nested English clauses understandable is hard. Give up.

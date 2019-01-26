@@ -27,7 +27,7 @@ class Node(Base, SourceInfo):
     options: Optional[Dict[str, str]]
 
 
-def ensure_failure(func: Callable, exception_class: Type[Exception]) -> None:
+def ensure_failure(func: Callable[[], Any], exception_class: Type[Exception]) -> None:
     exception: Optional[Exception] = None
 
     try:
@@ -130,10 +130,10 @@ def test_type_description() -> None:
     class Bob:
         pass
 
-    ty = List[Union[int, List[Dict[str, Union[int, float]]], str, Bob]]
+    ty = List[Union[int, List[Dict[str, Union[int, float]]], object, Bob]]
     desc = ''.join((
         'list of either integers, lists of mappings of strings to Union[int, float]\'s,',
-        ' strings, or Bobs'))
+        ' anything, or Bobs'))
     assert english_description_of_type(ty)[0] == desc
     assert english_description_of_type(Union[int, float])[0] == 'either an integer or a number'
     assert english_description_of_type(Union[int])[0] == 'integer'
