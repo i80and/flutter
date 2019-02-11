@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Callable, List, Dict, Tuple, Type, Optional, Union
 from flutter import (
     checked, check_type, english_description_of_type, LoadWrongType,
@@ -25,6 +25,7 @@ class SourceInfo:
 class Node(Base, SourceInfo):
     children: List[Union[str, int, 'Node']]
     options: Optional[Dict[str, str]]
+    have_default: str = field(default_factory=str)
 
 
 def ensure_failure(func: Callable[[], Any], exception_class: Type[Exception]) -> None:
@@ -62,7 +63,10 @@ def test_successful() -> None:
         'children': [1, 'foo', {'type': 'node', 'line': (2, 3), 'file': 'foo', 'children': []}]
     })
     reference_node = Node(type='node', file='foo', line=(1, 2), options={'foo': 'bar'}, children=[
-        1, 'foo', Node(type='node', file='foo', line=(2, 3), options=None, children=[])])
+        1,
+        'foo',
+        Node(type='node', file='foo', line=(2, 3), options=None, children=[], have_default='')],
+        have_default='')
     assert result == reference_node
 
 

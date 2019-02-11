@@ -1,9 +1,51 @@
 import collections.abc
+import dataclasses
 import typing
-from typing import cast, Any, Callable, Dict, Tuple, Type, TypeVar, Optional, Union
+from typing import cast, Any, Callable, Dict, Set, Tuple, Type, TypeVar, Iterator, Optional, Union
 from typing_extensions import Protocol
 
-CACHED_TYPES: Dict[type, Optional[Dict[str, type]]] = {}
+
+@dataclasses.dataclass
+class _Field:
+    """A single field in a _TypeThunk."""
+    __slots__ = ('default_factory', 'type')
+
+    default_factory: Optional[Callable[[], Any]]
+    type: Type[Any]
+
+
+class _TypeThunk:
+    """Type hints cannot be fully resolved at module runtime due to ForwardRefs. Instead,
+       store the type here, and resolve type hints only when needed. By that time, hopefully all
+       types have been declared."""
+    __slots__ = ('type', '_fields')
+
+    def __init__(self, klass: Type[Any]) -> None:
+        self.type = klass
+        self._fields: Optional[Dict[str, _Field]] = None
+
+    def __getitem__(self, field_name: str) -> _Field:
+        return self.fields[field_name]
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(self.fields.keys())
+
+    @property
+    def fields(self) -> Dict[str, _Field]:
+        if self._fields is None:
+            hints = typing.get_type_hints(self.type)
+            fields: Dict[str, _Field] = {
+                field.name: _Field(
+                    getattr(field, 'default_factory', None),
+                    hints[field.name]) for field in dataclasses.fields(self.type)
+            }
+
+            self._fields = fields
+
+        return self._fields
+
+
+CACHED_TYPES: Dict[type, _TypeThunk] = {}
 
 
 class HasAnnotations(Protocol):
@@ -123,7 +165,7 @@ def english_description_of_type(ty: type) -> Tuple[str, Dict[type, str]]:
 
 def checked(klass: Type[T]) -> Type[T]:
     """Marks a dataclass as being deserializable."""
-    CACHED_TYPES[klass] = None
+    CACHED_TYPES[klass] = _TypeThunk(klass)
     return klass
 
 
@@ -159,31 +201,40 @@ class LoadUnknownField(LoadError):
 
 def check_type(ty: Type[C], data: object, ty_module: str = '') -> C:
     # Check for a primitive type
-    if ty in (str, int, float, bool, type(None)):
+    if isinstance(ty, type) and issubclass(ty, (str, int, float, bool, type(None))):
         if not isinstance(data, ty):
             raise LoadWrongType(ty, data)
-        return data
+        return cast(C, data)
 
     # Check for an object
     if isinstance(data, dict) and ty in CACHED_TYPES:
         annotations = CACHED_TYPES[ty]
-        if annotations is None:
-            annotations = typing.get_type_hints(ty)
-            CACHED_TYPES[ty] = annotations
         result: Dict[str, object] = {}
 
         # Assign missing fields None
+        missing: Set[str] = set()
         for key in annotations:
             if key not in data:
                 data[key] = None
+                missing.add(key)
 
         # Check field types
         for key, value in data.items():
             if key not in annotations:
                 raise LoadUnknownField(ty, data, key)
 
-            expected_type = annotations[key]
-            result[key] = check_type(expected_type, value, ty.__module__)
+            field = annotations[key]
+            have_value = False
+            if key in missing:
+                # Use the field's default_factory if it's defined
+                try:
+                    result[key] = field.default_factory()  # type: ignore
+                    have_value = True
+                except TypeError:
+                    pass
+
+            if not have_value:
+                result[key] = check_type(field.type, value, ty.__module__)
 
         return ty(**result)
 
