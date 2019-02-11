@@ -7,5 +7,3 @@ lint:
 test:
 	coverage run test.py
 	coverage report
-	coverage html
-	-rm .coverage
