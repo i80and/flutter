@@ -1,9 +1,9 @@
 .PHONY: lint test
 
 lint:
-	mypy --strict flutter test.py
-	flake8 --max-line-length=100 flutter test.py
+	mypy --strict flutter test_flutter.py
+	flake8 --max-line-length=100 flutter test_flutter.py
 
 test:
-	coverage run test.py
+	pytest --cov=flutter
 	coverage report

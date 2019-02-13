@@ -153,16 +153,3 @@ def test_type_description() -> None:
 
     # Ensure that unknown PEP-484 types don't throw
     assert english_description_of_type(Callable[[], None])[0] == 'Callable[[], NoneType]'
-
-
-if __name__ == '__main__':
-    test_ensure_failure()
-    test_successful()
-    test_wrong_type()
-    test_wrong_arity()
-    test_no_union_variant()
-    test_bad_recursive_type()
-    test_too_many_fields()
-    test_any_types()
-    test_unknown_origin_type()
-    test_type_description()
