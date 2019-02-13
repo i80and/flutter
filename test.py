@@ -25,7 +25,8 @@ class SourceInfo:
 class Node(Base, SourceInfo):
     children: List[Union[str, int, 'Node']]
     options: Optional[Dict[str, str]]
-    have_default: str = field(default_factory=str)
+    have_default_factory: str = field(default_factory=str)
+    have_default: str = field(default='')
 
 
 def ensure_failure(func: Callable[[], Any], exception_class: Type[Exception]) -> None:
@@ -65,7 +66,9 @@ def test_successful() -> None:
     reference_node = Node(type='node', file='foo', line=(1, 2), options={'foo': 'bar'}, children=[
         1,
         'foo',
-        Node(type='node', file='foo', line=(2, 3), options=None, children=[], have_default='')],
+        Node(type='node', file='foo', line=(2, 3), options=None,
+             children=[], have_default_factory='', have_default='')],
+        have_default_factory='',
         have_default='')
     assert result == reference_node
 
@@ -143,6 +146,8 @@ def test_type_description() -> None:
     assert english_description_of_type(Union[int])[0] == 'integer'
     assert english_description_of_type(Optional[List[bool]])[0] == 'optional list of booleans'
     assert english_description_of_type(Tuple[int])[0] == 'Tuple[int]'
+    assert english_description_of_type(
+        Union[int, float, None])[0] == 'either an integer, a number, or nothing'
     assert english_description_of_type(
         Union[int, float, None])[0] == 'either an integer, a number, or nothing'
 

@@ -1,6 +1,7 @@
 import collections.abc
 import dataclasses
 import typing
+from dataclasses import MISSING
 from typing import cast, Any, Callable, Dict, Set, Tuple, Type, TypeVar, Iterator, Optional, Union
 from typing_extensions import Protocol
 
@@ -36,7 +37,9 @@ class _TypeThunk:
             hints = typing.get_type_hints(self.type)
             fields: Dict[str, _Field] = {
                 field.name: _Field(
-                    getattr(field, 'default_factory', None),
+                    field.default_factory if field.default_factory is not MISSING  # type: ignore
+                    else ((lambda: field.default) if field.default is not MISSING
+                          else None),
                     hints[field.name]) for field in dataclasses.fields(self.type)
             }
 
@@ -227,11 +230,9 @@ def check_type(ty: Type[C], data: object, ty_module: str = '') -> C:
             have_value = False
             if key in missing:
                 # Use the field's default_factory if it's defined
-                try:
-                    result[key] = field.default_factory()  # type: ignore
+                if field.default_factory is not None:
+                    result[key] = field.default_factory()
                     have_value = True
-                except TypeError:
-                    pass
 
             if not have_value:
                 result[key] = check_type(field.type, value, ty.__module__)
