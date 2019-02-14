@@ -33,12 +33,18 @@ class _TypeThunk:
 
     @property
     def fields(self) -> Dict[str, _Field]:
+        def make_factory(value: object) -> Callable[[], Any]:
+            return lambda: value
+
         if self._fields is None:
             hints = typing.get_type_hints(self.type)
+            # This is gnarly. Sorry. For each field, store its default_factory if present; otherwise
+            # create a factory returning its default if present; otherwise None. Default parameter
+            # in the lambda is a ~~hack~~ to avoid messing up the variable binding.
             fields: Dict[str, _Field] = {
                 field.name: _Field(
                     field.default_factory if field.default_factory is not MISSING  # type: ignore
-                    else ((lambda: field.default) if field.default is not MISSING
+                    else ((make_factory(field.default)) if field.default is not MISSING
                           else None),
                     hints[field.name]) for field in dataclasses.fields(self.type)
             }

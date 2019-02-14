@@ -26,7 +26,11 @@ class Node(Base, SourceInfo):
     children: List[Union[str, int, 'Node']]
     options: Optional[Dict[str, str]]
     have_default_factory: str = field(default_factory=str)
-    have_default: str = field(default='')
+    have_default: str = field(default='a')
+
+    # Having a field with a default at the end tests to prevent a quirk in
+    # the current implementation of default field values.
+    have_default_2: str = field(default='b')
 
 
 def ensure_failure(func: Callable[[], Any], exception_class: Type[Exception]) -> None:
@@ -67,9 +71,10 @@ def test_successful() -> None:
         1,
         'foo',
         Node(type='node', file='foo', line=(2, 3), options=None,
-             children=[], have_default_factory='', have_default='')],
+             children=[], have_default_factory='', have_default='a', have_default_2='b')],
         have_default_factory='',
-        have_default='')
+        have_default='a',
+        have_default_2='b')
     assert result == reference_node
 
 
