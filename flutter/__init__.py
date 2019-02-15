@@ -1,5 +1,6 @@
 import collections.abc
 import dataclasses
+import enum
 import typing
 from dataclasses import MISSING
 from typing import cast, Any, Callable, Dict, Set, Tuple, Type, TypeVar, Iterator, Optional, Union
@@ -214,6 +215,12 @@ def check_type(ty: Type[C], data: object, ty_module: str = '') -> C:
         if not isinstance(data, ty):
             raise LoadWrongType(ty, data)
         return cast(C, data)
+
+    if isinstance(ty, enum.EnumMeta):
+        if isinstance(data, str):
+            return ty[data]
+        if isinstance(data, int):
+            return ty(data)
 
     # Check for an object
     if isinstance(data, dict) and ty in CACHED_TYPES:

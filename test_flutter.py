@@ -1,10 +1,11 @@
-#!/usr/bin/env python3
-
 from dataclasses import dataclass, field
+from enum import Enum
 from typing import Any, Callable, List, Dict, Tuple, Type, Optional, Union
 from flutter import (
     checked, check_type, english_description_of_type, LoadWrongType,
     LoadWrongArity, LoadError, LoadUnknownField)
+
+Color = Enum('Color', 'red green blue')
 
 
 @checked
@@ -25,6 +26,7 @@ class SourceInfo:
 class Node(Base, SourceInfo):
     children: List[Union[str, int, 'Node']]
     options: Optional[Dict[str, str]]
+    color: Optional[Color] = field(default=None)
     have_default_factory: str = field(default_factory=str)
     have_default: str = field(default='a')
 
@@ -65,16 +67,23 @@ def test_successful() -> None:
         'file': 'foo',
         'line': (1, 2),
         'options': {'foo': 'bar'},
-        'children': [1, 'foo', {'type': 'node', 'line': (2, 3), 'file': 'foo', 'children': []}]
+        'color': 'green',
+        'children': [1, 'foo', {
+            'type': 'node',
+            'line': (2, 3),
+            'file': 'foo',
+            'color': 3,
+            'children': []}]
     })
     reference_node = Node(type='node', file='foo', line=(1, 2), options={'foo': 'bar'}, children=[
         1,
         'foo',
-        Node(type='node', file='foo', line=(2, 3), options=None,
+        Node(type='node', file='foo', line=(2, 3), options=None, color=Color.blue,
              children=[], have_default_factory='', have_default='a', have_default_2='b')],
         have_default_factory='',
         have_default='a',
-        have_default_2='b')
+        have_default_2='b',
+        color=Color.green)
     assert result == reference_node
 
 
@@ -107,6 +116,13 @@ def test_bad_recursive_type() -> None:
         lambda: check_type(Node, {'type': 'node', 'file': 'foo', 'line': (1, 2), 'children': [
             Node(type='node', file='foo', line=(2, 3, 4),  # type: ignore
                  options=None, children=[])]}),
+        LoadWrongType)
+
+
+def test_bad_enum() -> None:
+    ensure_failure(
+        lambda: check_type(Node, {
+            'type': 'node', 'file': 'foo', 'line': (1, 2), 'color': {}, 'children': []}),
         LoadWrongType)
 
 
