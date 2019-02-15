@@ -133,6 +133,12 @@ def test_too_many_fields() -> None:
         LoadUnknownField)
 
 
+def test_non_dict_into_known_type() -> None:
+    """Ensure that loading a non-dict type into a @checked type throws
+       LoadWrongType instead of LoadError."""
+    ensure_failure(lambda: check_type(Node, []), LoadWrongType)
+
+
 def test_any_types() -> None:
     @checked
     @dataclass

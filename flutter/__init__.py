@@ -209,7 +209,7 @@ class LoadUnknownField(LoadError):
         self.bad_field = bad_field
 
 
-def check_type(ty: Type[C], data: object, ty_module: str = '') -> C:
+def check_type(ty: Type[C], data: object) -> C:
     # Check for a primitive type
     if isinstance(ty, type) and issubclass(ty, (str, int, float, bool, type(None))):
         if not isinstance(data, ty):
@@ -222,8 +222,11 @@ def check_type(ty: Type[C], data: object, ty_module: str = '') -> C:
         if isinstance(data, int):
             return ty(data)
 
-    # Check for an object
-    if isinstance(data, dict) and ty in CACHED_TYPES:
+    # Check if the given type is a known flutter-annotated type
+    if ty in CACHED_TYPES:
+        if not isinstance(data, dict):
+            raise LoadWrongType(ty, data)
+
         annotations = CACHED_TYPES[ty]
         result: Dict[str, object] = {}
 
@@ -248,7 +251,7 @@ def check_type(ty: Type[C], data: object, ty_module: str = '') -> C:
                     have_value = True
 
             if not have_value:
-                result[key] = check_type(field.type, value, ty.__module__)
+                result[key] = check_type(field.type, value)
 
         return ty(**result)
 
@@ -259,23 +262,23 @@ def check_type(ty: Type[C], data: object, ty_module: str = '') -> C:
         if origin is list:
             if not isinstance(data, list):
                 raise LoadWrongType(ty, data)
-            return cast(C, [check_type(args[0], x, ty_module) for x in data])
+            return cast(C, [check_type(args[0], x) for x in data])
         elif origin is dict:
             if not isinstance(data, dict):
                 raise LoadWrongType(ty, data)
             key_type, value_type = args
             return cast(C, {
-                check_type(key_type, k, ty_module): check_type(value_type, v, ty_module)
+                check_type(key_type, k): check_type(value_type, v)
                 for k, v in data.items()})
         elif origin is tuple and isinstance(data, collections.abc.Collection):
             if not len(data) == len(args):
                 raise LoadWrongArity(ty, data)
             return cast(C, tuple(
-                check_type(tuple_ty, x, ty_module) for x, tuple_ty in zip(data, args)))
+                check_type(tuple_ty, x) for x, tuple_ty in zip(data, args)))
         elif origin is Union:
             for candidate_ty in args:
                 try:
-                    return cast(C, check_type(candidate_ty, data, ty_module))
+                    return cast(C, check_type(candidate_ty, data))
                 except LoadError:
                     pass
 
