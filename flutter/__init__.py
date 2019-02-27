@@ -217,10 +217,13 @@ def check_type(ty: Type[_C], data: object) -> _C:
         return cast(_C, data)
 
     if isinstance(ty, enum.EnumMeta):
-        if isinstance(data, str):
-            return ty[data]
-        if isinstance(data, int):
-            return ty(data)
+        try:
+            if isinstance(data, str):
+                return ty[data]
+            if isinstance(data, int):
+                return ty(data)
+        except (KeyError, ValueError) as err:
+            raise LoadWrongType(ty, data) from err
 
     # Check if the given type is a known flutter-annotated type
     if ty in CACHED_TYPES:
@@ -270,7 +273,10 @@ def check_type(ty: Type[_C], data: object) -> _C:
             return cast(_C, {
                 check_type(key_type, k): check_type(value_type, v)
                 for k, v in data.items()})
-        elif origin is tuple and isinstance(data, collections.abc.Collection):
+        elif origin is tuple:
+            if not isinstance(data, collections.abc.Collection):
+                raise LoadWrongType(ty, data)
+
             if not len(data) == len(args):
                 raise LoadWrongArity(ty, data)
             return cast(_C, tuple(

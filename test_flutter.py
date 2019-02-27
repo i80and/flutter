@@ -87,6 +87,16 @@ def test_successful() -> None:
     assert result == reference_node
 
 
+def test_enum_option() -> None:
+    assert check_type(Node, {
+        'type': 'node',
+        'file': 'foo',
+        'line': (1, 1),
+        'color': None,
+        'children': []
+    }).color is None
+
+
 def test_wrong_type() -> None:
     ensure_failure(
         lambda: check_type(Node, {'type': 5, 'file': 'foo', 'line': (1, 2), 'children': []}),
@@ -94,6 +104,10 @@ def test_wrong_type() -> None:
 
     ensure_failure(
         lambda: check_type(Node, {'type': 'node', 'file': 'foo', 'line': (1, 2), 'children': 5}),
+        LoadWrongType)
+
+    ensure_failure(
+        lambda: check_type(Node, {'type': 'node', 'file': 'foo', 'line': 1, 'children': []}),
         LoadWrongType)
 
 
