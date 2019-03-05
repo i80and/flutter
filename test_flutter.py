@@ -1,9 +1,10 @@
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, List, Dict, Tuple, Type, Optional, Union
+from typing import Any, Callable, List, Dict, Tuple, Optional, Union
 from flutter import (
     checked, check_type, english_description_of_type, LoadWrongType,
     LoadWrongArity, LoadError, LoadUnknownField)
+import pytest
 
 Color = Enum('Color', 'red green blue')
 
@@ -33,32 +34,6 @@ class Node(Base, SourceInfo):
     # Having a field with a default at the end tests to prevent a quirk in
     # the current implementation of default field values.
     have_default_2: str = field(default='b')
-
-
-def ensure_failure(func: Callable[[], Any], exception_class: Type[Exception]) -> None:
-    exception: Optional[Exception] = None
-
-    try:
-        func()
-    except exception_class:
-        return
-    except Exception as err:
-        exception = err
-
-    expected_name = exception_class.__name__
-    actual_name = exception.__class__.__name__
-    raise AssertionError(f'Expected function to raise {expected_name}; got {actual_name}')
-
-
-def test_ensure_failure() -> None:
-    def func() -> None:
-        raise ValueError
-
-    ensure_failure(func, ValueError)
-    try:
-        ensure_failure(func, KeyError)
-    except AssertionError:
-        pass
 
 
 def test_successful() -> None:
@@ -98,59 +73,52 @@ def test_enum_option() -> None:
 
 
 def test_wrong_type() -> None:
-    ensure_failure(
-        lambda: check_type(Node, {'type': 5, 'file': 'foo', 'line': (1, 2), 'children': []}),
-        LoadWrongType)
+    with pytest.raises(LoadWrongType):
+        check_type(Node, {'type': 5, 'file': 'foo', 'line': (1, 2), 'children': []})
 
-    ensure_failure(
-        lambda: check_type(Node, {'type': 'node', 'file': 'foo', 'line': (1, 2), 'children': 5}),
-        LoadWrongType)
+    with pytest.raises(LoadWrongType):
+        check_type(Node, {'type': 'node', 'file': 'foo', 'line': (1, 2), 'children': 5})
 
-    ensure_failure(
-        lambda: check_type(Node, {'type': 'node', 'file': 'foo', 'line': 1, 'children': []}),
-        LoadWrongType)
+    with pytest.raises(LoadWrongType):
+        check_type(Node, {'type': 'node', 'file': 'foo', 'line': 1, 'children': []})
 
 
 def test_wrong_arity() -> None:
-    ensure_failure(
-        lambda: check_type(Node, {
-            'type': 'node', 'file': 'foo', 'line': (1, 2, 3), 'children': []}),
-        LoadWrongArity)
+    with pytest.raises(LoadWrongArity):
+        check_type(Node, {
+            'type': 'node', 'file': 'foo', 'line': (1, 2, 3), 'children': []})
 
 
 def test_no_union_variant() -> None:
-    ensure_failure(
-        lambda: check_type(Node, {
-            'type': 'node', 'file': 'foo', 'line': (1, 2), 'children': [5.5]}),
-        LoadWrongType)
+    with pytest.raises(LoadWrongType):
+        check_type(Node, {
+            'type': 'node', 'file': 'foo', 'line': (1, 2), 'children': [5.5]})
 
 
 def test_bad_recursive_type() -> None:
-    ensure_failure(
-        lambda: check_type(Node, {'type': 'node', 'file': 'foo', 'line': (1, 2), 'children': [
+    with pytest.raises(LoadWrongType):
+        check_type(Node, {'type': 'node', 'file': 'foo', 'line': (1, 2), 'children': [
             Node(type='node', file='foo', line=(2, 3, 4),  # type: ignore
-                 options=None, children=[])]}),
-        LoadWrongType)
+                 options=None, children=[])]})
 
 
 def test_bad_enum() -> None:
-    ensure_failure(
-        lambda: check_type(Node, {
-            'type': 'node', 'file': 'foo', 'line': (1, 2), 'color': {}, 'children': []}),
-        LoadWrongType)
+    with pytest.raises(LoadWrongType):
+        check_type(Node, {
+            'type': 'node', 'file': 'foo', 'line': (1, 2), 'color': {}, 'children': []})
 
 
 def test_too_many_fields() -> None:
-    ensure_failure(
-        lambda: check_type(Node, {
-            'type': 'node', 'file': 'foo', 'line': (1, 2), 'children': [], 'extra': True}),
-        LoadUnknownField)
+    with pytest.raises(LoadUnknownField):
+        check_type(Node, {
+                'type': 'node', 'file': 'foo', 'line': (1, 2), 'children': [], 'extra': True})
 
 
 def test_non_dict_into_known_type() -> None:
     """Ensure that loading a non-dict type into a @checked type throws
        LoadWrongType instead of LoadError."""
-    ensure_failure(lambda: check_type(Node, []), LoadWrongType)
+    with pytest.raises(LoadWrongType):
+        check_type(Node, [])
 
 
 def test_any_types() -> None:
@@ -170,8 +138,8 @@ def test_unknown_origin_type() -> None:
     class Container:
         obj1: Callable[[int], int]
 
-    ensure_failure(
-        lambda: check_type(Container, {'obj1': 'foo', 'obj2': 'bar'}), LoadError)
+    with pytest.raises(LoadError):
+        check_type(Container, {'obj1': 'foo', 'obj2': 'bar'})
 
 
 def test_type_description() -> None:
