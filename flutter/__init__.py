@@ -3,7 +3,19 @@ import dataclasses
 import enum
 import typing
 from dataclasses import MISSING
-from typing import cast, Any, Callable, Dict, Set, Tuple, Type, TypeVar, Iterator, Optional, Union
+from typing import (
+    cast,
+    Any,
+    Callable,
+    Dict,
+    Set,
+    Tuple,
+    Type,
+    TypeVar,
+    Iterator,
+    Optional,
+    Union,
+)
 from typing_extensions import Protocol
 
 
@@ -12,17 +24,19 @@ class HasAnnotations(Protocol):
 
 
 class Constructable(Protocol):
-    def __init__(self, **kwargs: object) -> None: ...
+    def __init__(self, **kwargs: object) -> None:
+        ...
 
 
-_A = TypeVar('_A', bound=HasAnnotations)
-_C = TypeVar('_C', bound=Constructable)
+_A = TypeVar("_A", bound=HasAnnotations)
+_C = TypeVar("_C", bound=Constructable)
 
 
 @dataclasses.dataclass
 class _Field:
     """A single field in a _TypeThunk."""
-    __slots__ = ('default_factory', 'type')
+
+    __slots__ = ("default_factory", "type")
 
     default_factory: Optional[Callable[[], Any]]
     type: Type[Any]
@@ -32,7 +46,8 @@ class _TypeThunk:
     """Type hints cannot be fully resolved at module runtime due to ForwardRefs. Instead,
        store the type here, and resolve type hints only when needed. By that time, hopefully all
        types have been declared."""
-    __slots__ = ('type', '_fields')
+
+    __slots__ = ("type", "_fields")
 
     def __init__(self, klass: Type[Any]) -> None:
         self.type = klass
@@ -56,10 +71,16 @@ class _TypeThunk:
             # in the lambda is a ~~hack~~ to avoid messing up the variable binding.
             fields: Dict[str, _Field] = {
                 field.name: _Field(
-                    field.default_factory if field.default_factory is not MISSING  # type: ignore
-                    else ((make_factory(field.default)) if field.default is not MISSING
-                          else None),
-                    hints[field.name]) for field in dataclasses.fields(self.type)
+                    field.default_factory  # type: ignore
+                    if field.default_factory is not MISSING  # type: ignore
+                    else (
+                        (make_factory(field.default))
+                        if field.default is not MISSING
+                        else None
+                    ),
+                    hints[field.name],
+                )
+                for field in dataclasses.fields(self.type)
             }
 
             self._fields = fields
@@ -71,21 +92,21 @@ CACHED_TYPES: Dict[type, _TypeThunk] = {}
 
 
 def _add_indefinite_article(s: str) -> str:
-    if s == 'nothing':
+    if s == "nothing":
         return s
 
-    return ('an ' if s[0].lower() in 'aeiouy' else 'a ') + s
+    return ("an " if s[0].lower() in "aeiouy" else "a ") + s
 
 
 def _get_typename(ty: type) -> str:
-    return str(ty).replace('typing.', '')
+    return str(ty).replace("typing.", "")
 
 
 def _pluralize(s: str) -> str:
     if s[-1].isalpha():
-        return s + 's'
+        return s + "s"
 
-    return s + '\'s'
+    return s + "'s"
 
 
 def _generate_hint(ty: type, get_description: Callable[[type], str]) -> str:
@@ -93,10 +114,13 @@ def _generate_hint(ty: type, get_description: Callable[[type], str]) -> str:
         name = ty.__name__
     except AttributeError:
         return str(ty)
-    docstring = '\n'.join('  ' + line for line in (ty.__doc__ or '').split('\n'))
-    fields = '\n'.join(f'  {k}: {get_description(v)}'
-                       for k, v in typing.get_type_hints(ty).items() if not k.startswith('_'))
-    return f'{name}:\n{docstring}\n{fields}'
+    docstring = "\n".join("  " + line for line in (ty.__doc__ or "").split("\n"))
+    fields = "\n".join(
+        f"  {k}: {get_description(v)}"
+        for k, v in typing.get_type_hints(ty).items()
+        if not k.startswith("_")
+    )
+    return f"{name}:\n{docstring}\n{fields}"
 
 
 def english_description_of_type(ty: type) -> Tuple[str, Dict[type, str]]:
@@ -104,40 +128,40 @@ def english_description_of_type(ty: type) -> Tuple[str, Dict[type, str]]:
 
     def inner(ty: type, plural: bool, level: int) -> str:
         pluralize = _pluralize if plural else lambda s: s
-        plural_suffix = 's' if plural else ''
+        plural_suffix = "s" if plural else ""
 
         if ty is str:
-            return pluralize('string')
+            return pluralize("string")
 
         if ty is int:
-            return pluralize('integer')
+            return pluralize("integer")
 
         if ty is float:
-            return pluralize('number')
+            return pluralize("number")
 
         if ty is bool:
-            return pluralize('boolean')
+            return pluralize("boolean")
 
         if ty is type(None):  # noqa
-            return 'nothing'
+            return "nothing"
 
         if ty is object or ty is Any:
-            return 'anything'
+            return "anything"
 
         level += 1
         if level > 4:
             # Making nested English clauses understandable is hard. Give up.
             return pluralize(_get_typename(ty))
 
-        origin = getattr(ty, '__origin__', None)
+        origin = getattr(ty, "__origin__", None)
         if origin is not None:
-            args = getattr(ty, '__args__')
+            args = getattr(ty, "__args__")
             if origin is list:
-                return f'list{plural_suffix} of {inner(args[0], True, level)}'
+                return f"list{plural_suffix} of {inner(args[0], True, level)}"
             elif origin is dict:
                 key_type = inner(args[0], True, level)
                 value_type = inner(args[1], True, level)
-                return f'mapping{plural_suffix} of {key_type} to {value_type}'
+                return f"mapping{plural_suffix} of {key_type} to {value_type}"
             elif origin is tuple:
                 # Tuples are a hard problem... this is okay
                 return pluralize(_get_typename(ty))
@@ -149,7 +173,7 @@ def english_description_of_type(ty: type) -> Tuple[str, Dict[type, str]]:
                         pass
                     else:
                         non_none_arg = args[int(not none_index)]
-                        return f'optional {inner(non_none_arg, plural, level)}'
+                        return f"optional {inner(non_none_arg, plural, level)}"
 
                 up_to_last = args[:-1]
                 part1 = (inner(arg, plural, level=level) for arg in up_to_last)
@@ -157,9 +181,9 @@ def english_description_of_type(ty: type) -> Tuple[str, Dict[type, str]]:
                 if not plural:
                     part1 = (_add_indefinite_article(desc) for desc in part1)
                     part2 = _add_indefinite_article(part2)
-                comma = ',' if len(up_to_last) > 1 else ''
-                joined_part1 = ', '.join(part1)
-                return f'either {joined_part1}{comma} or {part2}'
+                comma = "," if len(up_to_last) > 1 else ""
+                joined_part1 = ", ".join(part1)
+                return f"either {joined_part1}{comma} or {part2}"
 
         # A custom type
         if ty not in hints:
@@ -189,14 +213,13 @@ class LoadError(TypeError):
 class LoadWrongType(LoadError):
     def __init__(self, ty: type, bad_data: object) -> None:
         description, hints = english_description_of_type(ty)
-        hint_text = '\n\n'.join(hints.values())
+        hint_text = "\n\n".join(hints.values())
         if hint_text:
-            hint_text = '\n\n' + hint_text
+            hint_text = "\n\n" + hint_text
 
         super().__init__(
-            f'Incorrect type. Expected {description}.{hint_text}',
-            ty,
-            bad_data)
+            f"Incorrect type. Expected {description}.{hint_text}", ty, bad_data
+        )
 
 
 class LoadWrongArity(LoadWrongType):
@@ -259,9 +282,9 @@ def check_type(ty: Type[_C], data: object) -> _C:
         return ty(**result)
 
     # Check for one of the special types defined by PEP-484
-    origin = getattr(ty, '__origin__', None)
+    origin = getattr(ty, "__origin__", None)
     if origin is not None:
-        args = getattr(ty, '__args__')
+        args = getattr(ty, "__args__")
         if origin is list:
             if not isinstance(data, list):
                 raise LoadWrongType(ty, data)
@@ -270,17 +293,22 @@ def check_type(ty: Type[_C], data: object) -> _C:
             if not isinstance(data, dict):
                 raise LoadWrongType(ty, data)
             key_type, value_type = args
-            return cast(_C, {
-                check_type(key_type, k): check_type(value_type, v)
-                for k, v in data.items()})
+            return cast(
+                _C,
+                {
+                    check_type(key_type, k): check_type(value_type, v)
+                    for k, v in data.items()
+                },
+            )
         elif origin is tuple:
             if not isinstance(data, collections.abc.Collection):
                 raise LoadWrongType(ty, data)
 
             if not len(data) == len(args):
                 raise LoadWrongArity(ty, data)
-            return cast(_C, tuple(
-                check_type(tuple_ty, x) for x, tuple_ty in zip(data, args)))
+            return cast(
+                _C, tuple(check_type(tuple_ty, x) for x, tuple_ty in zip(data, args))
+            )
         elif origin is Union:
             for candidate_ty in args:
                 try:
@@ -290,9 +318,9 @@ def check_type(ty: Type[_C], data: object) -> _C:
 
             raise LoadWrongType(ty, data)
 
-        raise LoadError('Unsupported PEP-484 type', ty, data)
+        raise LoadError("Unsupported PEP-484 type", ty, data)
 
     if ty is object or ty is Any:
         return cast(_C, data)
 
-    raise LoadError('Unloadable type', ty, data)
+    raise LoadError("Unloadable type", ty, data)
