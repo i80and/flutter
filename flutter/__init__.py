@@ -1,3 +1,7 @@
+"""Convert unstructured data into type-safe dataclasses."""
+
+__version__ = "0.1"
+
 import collections.abc
 import dataclasses
 import enum

@@ -1,0 +1,31 @@
+[build-system]
+requires = ["flit"]
+build-backend = "flit.buildapi"
+
+[tool.flit.metadata]
+module = "flutter"
+author = "Andrew Aldridge"
+author-email = "i80and@foxquill.com"
+home-page = "https://github.com/i80and/flutter"
+requires = [
+    "dataclasses~=0.6; python_version < '3.7'",
+    "typing_extensions"
+]
+requires-python = ">=3.6"
+description-file = "README.rst"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: ISC License (ISCL)",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Software Development :: Object Brokering"
+]
+
+[tool.flit.metadata.requires-extra]
+test = [
+    "pytest",
+    "pytest-cov"
+]
