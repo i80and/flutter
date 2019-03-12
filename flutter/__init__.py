@@ -308,8 +308,12 @@ def check_type(ty: Type[_C], data: object) -> _C:
             if not isinstance(data, collections.abc.Collection):
                 raise LoadWrongType(ty, data)
 
+            if len(args) == 2 and args[1] is ...:
+                return cast(_C, tuple((check_type(args[0], x)) for x in data))
+
             if not len(data) == len(args):
                 raise LoadWrongArity(ty, data)
+
             return cast(
                 _C, tuple(check_type(tuple_ty, x) for x, tuple_ty in zip(data, args))
             )

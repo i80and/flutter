@@ -72,6 +72,10 @@ def test_enum_option() -> None:
     }).color is None
 
 
+def test_variable_length_tuple() -> None:
+    assert check_type(Tuple[int, ...], [1, 2, 6]) == (1, 2, 6)
+
+
 def test_wrong_type() -> None:
     with pytest.raises(LoadWrongType):
         check_type(Node, {'type': 5, 'file': 'foo', 'line': (1, 2), 'children': []})
